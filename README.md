@@ -10,6 +10,19 @@ AI-агент с поддержкой RAG, Human-in-the-Loop и интеграц
 - **Relational DB:** PostgreSQL 16
 - **DevOps:** Docker Compose
 
+## 📊 База данных
+
+### PostgreSQL (порт 5433) хранит:
+
+- Документы и их метаданные
+- Историю диалогов
+- Pending actions для Human-in-the-Loop
+
+### Qdrant (порт 6333) хранит:
+
+- Эмбеддинги документов
+- Гибридный поиск (Dense + Sparse vectors)
+
 ## 🚀 Быстрый старт
 
 ### 1. Клонировать репозиторий
@@ -26,3 +39,14 @@ python -m venv venv
 source venv/bin/activate
 pip install -e ".[dev]"
 ```
+
+### 4. Запустить инфраструктуру
+```bash
+docker compose up -d
+```
+
+### 5. Проверить статус
+```bash
+docker compose ps
+```
+Контейнеры должны быть в статусе Up (healthy)
