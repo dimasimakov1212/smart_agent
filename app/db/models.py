@@ -37,6 +37,7 @@ class Document(Base, TimestampMixin):
     file_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Размер в байтах
     user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSON, default=dict, nullable=True)
+    total_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     chunks: Mapped[List["DocumentChunk"]] = relationship(
         back_populates="document",
         cascade="all, delete-orphan",
@@ -73,6 +74,7 @@ class DocumentChunk(Base, TimestampMixin):
         index=True,  # Быстрый поиск по ID вектора в Qdrant
     )
     metadata_json: Mapped[Optional[dict]] = mapped_column(JSON, default=dict, nullable=True)
+    token_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     document: Mapped["Document"] = relationship(back_populates="chunks")
     
     def __repr__(self) -> str:
@@ -95,14 +97,12 @@ class ConversationThread(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    
     messages: Mapped[List["Message"]] = relationship(
         back_populates="thread",
         cascade="all, delete-orphan",
         lazy="selectin",
         order_by="Message.created_at",
     )
-
     pending_actions: Mapped[List["PendingAction"]] = relationship(
         back_populates="thread",
         cascade="all, delete-orphan",
