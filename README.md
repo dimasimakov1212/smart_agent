@@ -50,3 +50,24 @@ docker compose up -d
 docker compose ps
 ```
 Контейнеры должны быть в статусе Up (healthy)
+
+
+### 6. Создать миграции
+```bash
+alembic revision --autogenerate -m "Краткое описание изменений"
+```
+
+### 7. Применить миграции
+```bash
+alembic upgrade head
+```
+
+### 8. Проверить результат применения миграций
+```bash
+docker exec -it smart_agent_postgres psql -U postgres -d smart_agent -c "\dt"
+```
+
+### 9. При необходимости отката последней миграции применить
+```bash
+alembic downgrade -1
+```
