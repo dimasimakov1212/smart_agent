@@ -71,3 +71,20 @@ docker exec -it smart_agent_postgres psql -U postgres -d smart_agent -c "\dt"
 ```bash
 alembic downgrade -1
 ```
+
+### 10. Запуск приложения
+```bash
+uvicorn app.main:app --reload --port 8000
+```
+
+## 📚 Документация
+
+- **Swagger:** /docs
+- **ReDoc:** /redoc
+- **OpenAPI schema:** /openapi.json
+
+## ⚓ Базовые endpoints
+
+- **/** информация о API
+- **/health** health check для мониторинга
+- **/info** детальная информация
