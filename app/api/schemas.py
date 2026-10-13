@@ -124,6 +124,18 @@ class ChatRequest(BaseModel):
     thread_id: Optional[str] = None
 
 
+class ChatResponse(BaseModel):
+    """Ответ на сообщение пользователя"""
+    
+    thread_id: str
+    user_message: MessageResponse
+    assistant_message: MessageResponse
+    status: str = Field(
+        default="completed",
+        description="Статус обработки: completed, awaiting_approval, error"
+    )
+
+
 # === Common Schemas ===
 
 class ErrorResponse(BaseModel):
