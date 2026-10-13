@@ -54,11 +54,11 @@ async def get_user_documents(
 ):
     """Получает список документов пользователя с пагинацией."""
 
-    documents = await repo.get_user_documents(user_id=user_id, limit=limit, offset=offset)
+    documents, total = await repo.get_user_documents(user_id=user_id, limit=limit, offset=offset)
     
     return DocumentListResponse(
         documents=documents,
-        total=len(documents),
+        total=total,
     )
 
 
