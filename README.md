@@ -26,6 +26,7 @@ AI-агент с поддержкой RAG, Human-in-the-Loop и интеграц
 ## 🚀 Быстрый старт
 
 ### 1. Клонировать репозиторий
+
 ```bash
 git clone https://github.com/dimasimakov1212/smart_agent.git
 cd smart_agent
@@ -34,6 +35,7 @@ cd smart_agent
 ### 2. Настроить окружение по .env.example
 
 ### 3. Установить зависимости
+
 ```bash
 python -m venv venv
 source venv/bin/activate
@@ -41,38 +43,45 @@ pip install -e ".[dev]"
 ```
 
 ### 4. Запустить инфраструктуру
+
 ```bash
 docker compose up -d
 ```
 
 ### 5. Проверить статус
+
 ```bash
 docker compose ps
 ```
+
 Контейнеры должны быть в статусе Up (healthy)
 
-
 ### 6. Создать миграции
+
 ```bash
 alembic revision --autogenerate -m "Краткое описание изменений"
 ```
 
 ### 7. Применить миграции
+
 ```bash
 alembic upgrade head
 ```
 
 ### 8. Проверить результат применения миграций
+
 ```bash
 docker exec -it smart_agent_postgres psql -U postgres -d smart_agent -c "\dt"
 ```
 
 ### 9. При необходимости отката последней миграции применить
+
 ```bash
 alembic downgrade -1
 ```
 
 ### 10. Запуск приложения
+
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
