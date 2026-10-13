@@ -88,9 +88,13 @@ class DocumentRepository:
 
     async def get_user_documents(
         self, user_id: str, limit: int = 50, offset: int = 0
-    ) -> List[Document]:
-        """Получает список документов пользователя (без чанков)"""
-
+    ) -> tuple[List[Document], int]:
+        """
+        Получает список документов пользователя с пагинацией.
+        Возвращает кортеж: (список документов, общее количество).
+        """
+        
+        # 1. Список документов
         result = await self.session.execute(
             select(Document)
             .where(Document.user_id == user_id)
@@ -98,7 +102,15 @@ class DocumentRepository:
             .limit(limit)
             .offset(offset)
         )
-        return list(result.scalars().all())
+        documents = list(result.scalars().all())
+        
+        # 2. Общее количество
+        count_result = await self.session.execute(
+            select(func.count(Document.id)).where(Document.user_id == user_id)
+        )
+        total = count_result.scalar_one()
+        
+        return documents, total
 
 
 class ConversationRepository:
