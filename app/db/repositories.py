@@ -156,8 +156,9 @@ class ConversationRepository:
         tool_call_id: Optional[str] = None,
         metadata_json: Optional[dict] = None,
     ) -> Message:
-        """Добавляет сообщение в тред"""
-
+        """
+        Добавляет сообщение в тред и обновляет updated_at у треда.
+        """
         message = Message(
             thread_id=thread_id,
             role=role,
@@ -168,6 +169,14 @@ class ConversationRepository:
         )
         self.session.add(message)
         await self.session.flush()
+        
+        # Обновляем updated_at у треда
+        await self.session.execute(
+            update(ConversationThread)
+            .where(ConversationThread.id == thread_id)
+            .values(updated_at=func.now())
+        )
+        
         return message
 
     async def get_thread_messages(
