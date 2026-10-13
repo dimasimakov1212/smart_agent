@@ -183,18 +183,31 @@ class ConversationRepository:
         )
         return list(result.scalars().all())
 
-    async def get_user_threads(
-        self, user_id: str, limit: int = 20
-    ) -> List[ConversationThread]:
-        """Получает список тредов пользователя (без сообщений)"""
-
+    async def get_user_threads_paginated(
+        self, user_id: str, limit: int = 20, offset: int = 0
+    ) -> tuple[List[ConversationThread], int]:
+        """
+        Получает список тредов пользователя с пагинацией.
+        Возвращает кортеж: (список тредов, общее количество).
+        """
+        # 1. Список тредов
         result = await self.session.execute(
             select(ConversationThread)
             .where(ConversationThread.user_id == user_id)
             .order_by(ConversationThread.updated_at.desc())
             .limit(limit)
+            .offset(offset)
         )
-        return list(result.scalars().all())
+        threads = list(result.scalars().all())
+        
+        # 2. Общее количество
+        count_result = await self.session.execute(
+            select(func.count(ConversationThread.id))
+            .where(ConversationThread.user_id == user_id)
+        )
+        total = count_result.scalar_one()
+        
+        return threads, total
 
     async def update_thread_status(self, thread_id: str, status: str) -> None:
         """Обновляет статус треда (active, completed, interrupted)"""
