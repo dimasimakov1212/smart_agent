@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     # === OpenAI ===
     # БЕЗ дефолта — обязательно должно быть в .env или окружении!
     OPENAI_API_KEY: str
+    OPENAI_BASE_URL: str
+    OPENAI_MODEL: str
     
     # === Опциональные настройки ===
     # LangSmith для observability
