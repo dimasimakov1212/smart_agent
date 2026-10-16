@@ -19,7 +19,7 @@ settings = get_settings()
 
 # Создаём модель с привязанными инструментами
 llm = ChatOpenAI(
-    model="gpt-4o-mini",  # Можно заменить на gpt-4o или другую модель
+    model=settings.OPENAI_MODEL,
     api_key=settings.OPENAI_API_KEY,
     base_url=settings.OPENAI_BASE_URL,
     temperature=0.7,
