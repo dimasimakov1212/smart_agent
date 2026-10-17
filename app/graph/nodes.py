@@ -55,12 +55,12 @@ SYSTEM_PROMPT = """Ты — умный AI-ассистент с доступом
 
 # === Узел 1: Agent Node ===
 
-def agent_node(state: AgentState) -> Dict[str, Any]:
+async def agent_node(state: AgentState) -> Dict[str, Any]:
     """
-    Главный узел агента.
+    Главный узел агента (асинхронный).
     
     Вызывает LLM с текущей историей сообщений и инструментами.
-    LLM решает, что делать: ответить напрямую или вызвать инструмент.
+    Использует ainvoke, чтобы не блокировать event loop FastAPI.
     
     Args:
         state: Текущее состояние графа
@@ -68,6 +68,7 @@ def agent_node(state: AgentState) -> Dict[str, Any]:
     Returns:
         Обновления State (новые сообщения)
     """
+    
     # Получаем историю сообщений
     messages = state["messages"]
     
@@ -78,8 +79,8 @@ def agent_node(state: AgentState) -> Dict[str, Any]:
         system_message = SystemMessage(content=SYSTEM_PROMPT.format(current_datetime=current_datetime))
         messages = [system_message] + messages
     
-    # Вызываем LLM
-    response = llm_with_tools.invoke(messages)
+    # вызов LLM
+    response = await llm_with_tools.ainvoke(messages)
     
     # Возвращаем обновление State
     return {"messages": [response]}
@@ -94,7 +95,7 @@ tools_node = ToolNode(ALL_TOOLS)
 
 # === Узел 3: Human Approval Node ===
 
-def human_approval_node(state: AgentState) -> Dict[str, Any]:
+async def human_approval_node(state: AgentState) -> Dict[str, Any]:
     """
     Узел для проверки, нужно ли подтверждение пользователя.
     
