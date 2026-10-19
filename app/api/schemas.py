@@ -129,10 +129,17 @@ class ChatResponse(BaseModel):
     
     thread_id: str
     user_message: MessageResponse
-    assistant_message: MessageResponse
+    assistant_message: Optional[MessageResponse] = Field(
+        default=None,
+        description="Ответ агента. None, если граф остановился в ожидании подтверждения."
+    )
     status: str = Field(
         default="completed",
         description="Статус обработки: completed, awaiting_approval, error"
+    )
+    pending_action: Optional[PendingActionResponse] = Field(
+        default=None,
+        description="Действие, ожидающее подтверждения (если status='awaiting_approval')"
     )
 
 

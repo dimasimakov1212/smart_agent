@@ -11,6 +11,8 @@ from app.db.repositories import (
     ConversationRepository,
     PendingActionRepository,
 )
+from app.services.chat_service import ChatService
+from app.graph.builder import graph
 
 
 # === Database Session ===
@@ -54,3 +56,15 @@ async def get_pending_action_repo(
     Зависимость для получения PendingActionRepository.
     """
     return PendingActionRepository(session)
+
+
+# === Service Dependencies ===
+async def get_chat_service(
+    session: AsyncSession = Depends(get_db),
+) -> ChatService:
+    """
+    Зависимость для получения ChatService.
+    
+    ChatService оркестрирует диалог: БД <-> LangGraph.
+    """
+    return ChatService(session=session, agent_graph=graph)
