@@ -3,9 +3,11 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.deps import get_pending_action_repo, get_conversation_repo
+from app.api.deps import get_chat_service, get_pending_action_repo
 from app.api.schemas import PendingActionResponse, ApprovalRequest
-from app.db.repositories import PendingActionRepository, ConversationRepository
+from app.core.exceptions import ActionAlreadyResolvedError, ActionNotFoundError
+from app.db.repositories import PendingActionRepository
+from app.services.chat_service import ChatService
 
 router = APIRouter(prefix="/actions", tags=["actions"])
 
@@ -42,53 +44,24 @@ async def get_pending_action(
 async def approve_action(
     action_id: int,
     request: ApprovalRequest,
-    action_repo: PendingActionRepository = Depends(get_pending_action_repo),
-    conv_repo: ConversationRepository = Depends(get_conversation_repo),
+    service: ChatService = Depends(get_chat_service),
 ):
-    """
-    Одобряет действие агента.
-    
-    Логика:
-    1. Проверяем, что action существует и в статусе 'pending'
-    2. Обновляем статус на 'approved'
-    3. Resume LangGraph с результатом действия
-    4. Добавляем сообщение в тред о том, что действие одобрено
-    """
-    # Получаем action
-    action = await action_repo.get_pending_action(action_id)
-    if not action:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Action with id {action_id} not found",
+    """Одобряет действие и ВОЗОБНОВЛЯЕТ выполнение LangGraph."""
+    try:
+        result = await service.resume_action(
+            action_id=action_id,
+            user_id=request.user_id,
+            approved=True,
+            feedback=request.feedback,
         )
-    
-    # Проверяем статус
-    if action.status != "pending":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Action is already {action.status}, cannot approve",
-        )
-    
-    # Одобряем действие
-    await action_repo.approve_action(
-        action_id=action_id,
-        approved_by=request.user_id,
-        result={"approved": True, "feedback": request.feedback},
-    )
-    
-    # Добавляем сообщение в тред
-    feedback_text = f" (с комментарием: {request.feedback})" if request.feedback else ""
-    await conv_repo.add_message(
-        thread_id=action.thread_id,
-        role="system",
-        content=f"✅ Действие '{action.action_type}' одобрено пользователем {request.user_id}{feedback_text}",
-    )
-    
-    # TODO: В будущем здесь будет resume LangGraph
-    # response = graph.invoke(Command(resume={"action_approved": True}), config)
-    
-    # Получаем обновлённый action для возврата
-    updated_action = await action_repo.get_pending_action(action_id)
+    except ActionNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ActionAlreadyResolvedError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Возвращаем обновлённое действие из БД для удобства клиента
+    # (Оно уже обновлено внутри service.resume_action)
+    updated_action = await service.actions.get_pending_action(action_id)
     return updated_action
 
 
@@ -101,50 +74,20 @@ async def approve_action(
 async def reject_action(
     action_id: int,
     request: ApprovalRequest,
-    action_repo: PendingActionRepository = Depends(get_pending_action_repo),
-    conv_repo: ConversationRepository = Depends(get_conversation_repo),
+    service: ChatService = Depends(get_chat_service),
 ):
-    """
-    Отклоняет действие агента.
-    
-    Логика:
-    1. Проверяем, что action существует и в статусе 'pending'
-    2. Обновляем статус на 'rejected'
-    3. Resume LangGraph с фидбеком пользователя
-    4. Добавляем сообщение в тред о том, что действие отклонено
-    """
-    # Получаем action
-    action = await action_repo.get_pending_action(action_id)
-    if not action:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Action with id {action_id} not found",
+    """Отклоняет действие и ВОЗОБНОВЛЯЕТ выполнение LangGraph с фидбеком."""
+    try:
+        result = await service.resume_action(
+            action_id=action_id,
+            user_id=request.user_id,
+            approved=False,
+            feedback=request.feedback,
         )
-    
-    # Проверяем статус
-    if action.status != "pending":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Action is already {action.status}, cannot reject",
-        )
-    
-    # Отклоняем действие
-    await action_repo.reject_action(
-        action_id=action_id,
-        rejected_by=request.user_id,
-    )
-    
-    # Добавляем сообщение в тред
-    feedback_text = f" Причина: {request.feedback}" if request.feedback else ""
-    await conv_repo.add_message(
-        thread_id=action.thread_id,
-        role="system",
-        content=f"❌ Действие '{action.action_type}' отклонено пользователем {request.user_id}.{feedback_text}",
-    )
-    
-    # TODO: В будущем здесь будет resume LangGraph с фидбеком
-    # response = graph.invoke(Command(resume={"action_rejected": True, "feedback": request.feedback}), config)
-    
-    # Получаем обновлённый action для возврата
-    updated_action = await action_repo.get_pending_action(action_id)
+    except ActionNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ActionAlreadyResolvedError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    updated_action = await service.actions.get_pending_action(action_id)
     return updated_action
