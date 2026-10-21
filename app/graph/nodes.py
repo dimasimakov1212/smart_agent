@@ -3,9 +3,9 @@
 
 from typing import Dict, Any, List
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langgraph.prebuilt import ToolNode
-from langgraph.types import interrupt, Command
+from langgraph.types import interrupt
 
 from app.graph.state import AgentState
 from app.tools.agent_tools import ALL_TOOLS, HUMAN_APPROVAL_REQUIRED_TOOLS, is_human_approval_required
@@ -110,9 +110,8 @@ async def human_approval_node(state: AgentState) -> Dict[str, Any]:
     Returns:
         Обновления State или interrupt для ожидания подтверждения
     """
+
     messages = state["messages"]
-    
-    # Проверяем последнее сообщение
     if not messages:
         return {}
     
@@ -120,32 +119,40 @@ async def human_approval_node(state: AgentState) -> Dict[str, Any]:
     
     # Если это AI-сообщение с вызовами инструментов
     if isinstance(last_message, AIMessage) and last_message.tool_calls:
-        # Проверяем, есть ли среди вызовов инструменты, требующие подтверждения
         for tool_call in last_message.tool_calls:
-            tool_name = tool_call["name"]
-            
-            if is_human_approval_required(tool_name):
-                # Останавливаем граф и ждём подтверждения
-                # interrupt() возвращает управление пользователю
-                # Когда пользователь одобрит, граф продолжится с Command(resume=...)
-                
+            if is_human_approval_required(tool_call["name"]):
                 action_data = {
-                    "action_type": tool_name,
+                    "action_type": tool_call["name"],
                     "tool_call_id": tool_call["id"],
                     "args": tool_call["args"],
                 }
                 
-                # Сохраняем pending action в State
-                # (в будущем это будет синхронизировано с БД через API)
-                
-                # Останавливаем выполнение
-                interrupt({
+                # 1. ОСТАНАВЛИВАЕМ граф. 
+                # Когда граф будет возобновлён через Command(resume=...), 
+                # переменная `decision` получит это значение.
+                decision = interrupt({
                     "type": "human_approval_required",
-                    "message": f"Агент хочет выполнить действие '{tool_name}', которое требует вашего подтверждения.",
+                    "message": f"Агент хочет выполнить действие '{tool_call['name']}'.",
                     "action_data": action_data,
                 })
+                
+                # 2. ГРАФ ВОЗОБНОВЛЁН. Обрабатываем решение.
+                if decision.get("approved"):
+                    # Пользователь одобрил. 
+                    # Возвращаем {}, чтобы условное ребро should_continue 
+                    # снова увидело tool_calls и направило граф в tools_node.
+                    return {}
+                else:
+                    # Пользователь отклонил.
+                    # Мы должны сымитировать ответ инструмента об отказе, 
+                    # чтобы LLM знала, что делать дальше (например, извиниться).
+                    feedback = decision.get("feedback", "Причина не указана.")
+                    rejection_message = ToolMessage(
+                        content=f"Действие отклонено пользователем. Причина: {feedback}",
+                        tool_call_id=tool_call["id"]
+                    )
+                    return {"messages": [rejection_message]}
     
-    # Если подтверждение не нужно — просто возвращаем пустое обновление
     return {}
 
 
