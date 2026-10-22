@@ -12,7 +12,7 @@ from app.db.repositories import (
     PendingActionRepository,
 )
 from app.services.chat_service import ChatService
-from app.graph.builder import graph
+import app.graph.builder as builder_module
 
 
 # === Database Session ===
@@ -64,7 +64,12 @@ async def get_chat_service(
 ) -> ChatService:
     """
     Зависимость для получения ChatService.
-    
-    ChatService оркестрирует диалог: БД <-> LangGraph.
+    Обращаемся к builder_module.graph во время выполнения, 
+    когда lifespan уже инициализировал граф.
     """
-    return ChatService(session=session, agent_graph=graph)
+    
+    # Проверка если сервер запросили до старта
+    if builder_module.graph is None:
+        raise RuntimeError("LangGraph не инициализирован. Проверьте logs startup.")
+        
+    return ChatService(session=session, agent_graph=builder_module.graph)
