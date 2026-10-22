@@ -7,9 +7,10 @@ from uuid import uuid4
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ThreadAccessDeniedError, ThreadNotFoundError
+from app.core.exceptions import ThreadAccessDeniedError, ThreadNotFoundError, ActionNotFoundError, ActionAlreadyResolvedError
 from app.db.models import Message, PendingAction
 from app.db.repositories import ConversationRepository, PendingActionRepository
 
@@ -23,7 +24,7 @@ class ChatResult:
     в ожидании подтверждения пользователя.
     """
     thread_id: str
-    user_message: Message
+    user_message: Optional[Message]
     assistant_message: Optional[Message]
     status: str
     pending_action: Optional[PendingAction] = None
@@ -116,6 +117,64 @@ class ChatService:
         return ChatResult(
             thread_id=thread_id,
             user_message=user_message,
+            assistant_message=assistant_message,
+            status="completed",
+        )
+
+    # === Возобновление работы графа ===
+
+    async def resume_action(
+        self,
+        *,
+        action_id: int,
+        user_id: str,
+        approved: bool,
+        feedback: Optional[str] = None,
+    ) -> ChatResult:
+        """
+        Возобновляет выполнение графа после решения пользователя.
+        """
+
+        # 1. Проверяем действие
+        action = await self.actions.get_pending_action(action_id)
+        if not action:
+            raise ActionNotFoundError(f"Action {action_id} not found")
+        if action.status != "pending":
+            raise ActionAlreadyResolvedError(f"Action {action_id} is already {action.status}")
+
+        # 2. Обновляем статус в БД
+        if approved:
+            await self.actions.approve_action(
+                action_id=action_id,
+                approved_by=user_id,
+                result={"feedback": feedback}
+            )
+        else:
+            await self.actions.reject_action(
+                action_id=action_id,
+                rejected_by=user_id
+            )
+
+        # 3. Возобновляем граф
+        config = {"configurable": {"thread_id": action.thread_id}}
+        resume_payload = {"approved": approved, "feedback": feedback}
+        
+        # Command говорит графу: "Продолжи с этого места, используя эти данные"
+        result = await self.graph.ainvoke(Command(resume=resume_payload), config)
+
+        # 4. Извлекаем финальный ответ агента и сохраняем в БД
+        answer = self._extract_final_answer(result["messages"])
+        
+        assistant_message = await self.conversations.add_message(
+            thread_id=action.thread_id,
+            role="assistant",
+            content=answer,
+        )
+
+        # Возвращаем результат (user_message здесь None, т.к. это продолжение старого запроса)
+        return ChatResult(
+            thread_id=action.thread_id,
+            user_message=None, 
             assistant_message=assistant_message,
             status="completed",
         )

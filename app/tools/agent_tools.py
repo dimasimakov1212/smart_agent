@@ -5,6 +5,11 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 from langchain_core.tools import tool
 
+import uuid
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 # === Информационные инструменты ===
 
@@ -56,22 +61,31 @@ def create_jira_task(
     Создаёт задачу в Jira.
     
     Args:
-        title: Заголовок задачи
-        description: Описание задачи
-        priority: Приоритет (low, medium, high, critical)
+        title: Заголовок задачи (обязательно)
+        description: Описание задачи (обязательно)
+        priority: Приоритет (low, medium, high, critical). По умолчанию medium.
         assignee: Исполнитель (опционально)
     
     Returns:
-        Информация о созданной задаче
+        Информация о созданной задаче.
     
-    ВАЖНО: Это действие требует подтверждения пользователя (Human-in-the-Loop).
-    Перед выполнением агент должен дождаться одобрения.
+    Используй этот инструмент, когда пользователь явно просит создать задачу в Jira 
+    и предоставил заголовок и описание.
     """
+
+    # 🚀 ГЕНЕРИРУЕМ УНИКАЛЬНЫЙ ID ПРЯМО ЗДЕСЬ
+    # LLM НЕ МОЖЕТ это угадать. Если этот ID появится в ответе, код точно выполнялся.
+    real_task_id = f"JIRA-{uuid.uuid4().hex[:8].upper()}"
+    
+    # 🚀 ПИШЕМ В КОНСОЛЬ СЕРВЕРА
+    logger.warning(f"🛠️ [TOOL EXECUTED] create_jira_task | ID: {real_task_id} | Title: {title}")
+    
+
     # TODO: Интеграция с Jira API
     # Сейчас возвращаем заглушку
     
     task_info = {
-        "task_id": "PROJ-123",
+        "task_id": real_task_id,
         "title": title,
         "description": description,
         "priority": priority,
@@ -108,9 +122,10 @@ def send_email(
     Returns:
         Информация об отправленном письме
     
-    ВАЖНО: Это действие требует подтверждения пользователя (Human-in-the-Loop).
-    Перед выполнением агент должен дождаться одобрения.
+    Используй этот инструмент, когда пользователь явно просит отправить email 
+    и предоставил email получателя, тему письма и тело письма
     """
+
     # TODO: Интеграция с SMTP или email API
     # Сейчас возвращаем заглушку
     

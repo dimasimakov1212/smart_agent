@@ -5,8 +5,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
 from app.api.routes import documents, conversations, chat, actions
 from app.core.config import get_settings
+from app.graph.builder import build_graph
+import app.graph.builder as builder_module
 
 
 settings = get_settings()
@@ -14,12 +18,22 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Lifecycle manager для FastAPI.
-    Здесь можно инициализировать ресурсы при старте и освобождать при остановке.
-    """
+    # === Startup ===
+    print("🚀 Инициализация LangGraph Checkpointer в PostgreSQL...")
     
-    yield
+    # возвращает контекстный менеджер, управляющий пулом соединений
+    async with AsyncPostgresSaver.from_conn_string(settings.DATABASE_URL_CHECKPOINT) as checkpointer:
+        
+        await checkpointer.setup()
+        print("✅ Checkpointer таблицы созданы/проверены.")
+        
+        # Собираем граф с активным чекпоинтером
+        builder_module.graph = build_graph(checkpointer)
+        print("✅ LangGraph успешно скомпилирован с AsyncPostgresSaver.")
+        
+        yield  
+
+    print("🛑 Завершение работы Smart Agent API... (Пул соединений закрыт)")
 
 
 # Создание FastAPI приложения
