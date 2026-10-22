@@ -1,7 +1,7 @@
 # app/graph/nodes.py
 #--------------------------------------------
 
-from typing import Dict, Any, List
+from typing import Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langgraph.prebuilt import ToolNode
@@ -136,15 +136,16 @@ async def human_approval_node(state: AgentState) -> Dict[str, Any]:
                     "action_data": action_data,
                 })
                 
-                # 2. ГРАФ ВОЗОБНОВЛЁН. Обрабатываем решение.
+                # 2. ГРАФ ВОЗОБНОВЛЁН после Command(resume=...). Обрабатываем решение.
                 if decision.get("approved"):
                     # Пользователь одобрил. 
                     # Возвращаем {}, чтобы условное ребро should_continue 
                     # снова увидело tool_calls и направило граф в tools_node.
                     return {}
+                
                 else:
                     # Пользователь отклонил.
-                    # Мы должны сымитировать ответ инструмента об отказе, 
+                    # Имитация ответа инструмента об отказе, 
                     # чтобы LLM знала, что делать дальше (например, извиниться).
                     feedback = decision.get("feedback", "Причина не указана.")
                     rejection_message = ToolMessage(
@@ -152,7 +153,7 @@ async def human_approval_node(state: AgentState) -> Dict[str, Any]:
                         tool_call_id=tool_call["id"]
                     )
                     return {"messages": [rejection_message]}
-    
+
     return {}
 
 
