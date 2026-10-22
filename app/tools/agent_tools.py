@@ -1,7 +1,7 @@
 # app/tools/agent_tools.py
 #--------------------------------------------
 
-from typing import Dict, Any, List, Optional
+from typing import List, Literal, Optional
 from datetime import datetime
 from langchain_core.tools import tool
 
@@ -54,7 +54,7 @@ def search_documents(query: str, user_id: str, limit: int = 5) -> str:
 def create_jira_task(
     title: str,
     description: str,
-    priority: str = "medium",
+    priority: Literal["low", "medium", "high", "critical"] = "medium",
     assignee: Optional[str] = None,
 ) -> str:
     """
@@ -63,7 +63,7 @@ def create_jira_task(
     Args:
         title: Заголовок задачи (обязательно)
         description: Описание задачи (обязательно)
-        priority: Приоритет (low, medium, high, critical). По умолчанию medium.
+        priority: Приоритет задачи. Строго одно из: "low", "medium", "high", "critical". По умолчанию "medium".
         assignee: Исполнитель (опционально)
     
     Returns:
