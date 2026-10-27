@@ -1,5 +1,4 @@
 # app/core/config.py
-#--------------------------------------------
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
@@ -29,6 +28,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     OPENAI_BASE_URL: str
     OPENAI_MODEL: str
+    OPENAI_EMBEDDINGS_URL: str
+    OPENAI_EMBEDDINGS_MODEL: str
     
     # === Опциональные настройки ===
     # LangSmith для observability
