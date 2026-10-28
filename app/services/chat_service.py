@@ -71,7 +71,11 @@ class ChatService:
         )
 
         config = {"configurable": {"thread_id": thread_id}}
-        input_state = await self._build_input_state(thread_id=thread_id, text=text)
+        input_state = await self._build_input_state(
+            thread_id=thread_id, 
+            text=text,
+            user_id=user_id
+        )
 
         result = await self.graph.ainvoke(input_state, config)
 
@@ -217,6 +221,7 @@ class ChatService:
         *,
         thread_id: str,
         text: str,
+        user_id: str,
     ) -> dict:
         """
         Готовит входное состояние для графа.
@@ -256,7 +261,7 @@ class ChatService:
             "messages": messages,
             "thread_id": thread_id,
             "current_pending_action": None,
-            "user_context": None,
+            "user_context": {"user_id": user_id},
         }
 
     @staticmethod
