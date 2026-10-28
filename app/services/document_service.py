@@ -1,4 +1,5 @@
 # app/services/document_service.py
+
 import logging
 from io import BytesIO
 from typing import List, Dict, Any
@@ -33,8 +34,6 @@ class DocumentService:
         """
         Полный цикл обработки документа: БД -> Текст -> Чанки -> Qdrant -> Обновление БД.
         """
-
-        logger.info(f"🚀 Начало загрузки и RAG-обработки документа: {filename}")
         
         # 1. Создаем базовую запись в БД
         document = await self.doc_repo.create_document(
@@ -72,7 +71,7 @@ class DocumentService:
         # 5. Обновляем счетчик чанков в БД (метод уже есть в твоем репозитории!)
         await self.doc_repo.update_document_tokens(document.id, chunks_count)
 
-        logger.info(f"✅ Документ '{filename}' успешно обработан, создано {chunks_count} чанков.")
+        logger.warning(f"✅ [SERVICE] Документ '{filename}' полностью обработан, создано {chunks_count} чанков.")
 
         return document
 
