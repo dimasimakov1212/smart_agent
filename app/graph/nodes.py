@@ -1,5 +1,4 @@
 # app/graph/nodes.py
-#--------------------------------------------
 
 from typing import Dict, Any
 from langchain_openai import ChatOpenAI
@@ -10,6 +9,9 @@ from langgraph.types import interrupt
 from app.graph.state import AgentState
 from app.tools.agent_tools import ALL_TOOLS, HUMAN_APPROVAL_REQUIRED_TOOLS, is_human_approval_required
 from app.core.config import get_settings
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 settings = get_settings()
@@ -78,16 +80,23 @@ async def agent_node(state: AgentState) -> Dict[str, Any]:
     
     # Получаем историю сообщений
     messages = state["messages"]
+
+    # получаем ID пользователя из контекста и добавляем его в правило
+    user_context = state.get("user_context") or {}
+    current_user_id = user_context.get("user_id", "unknown")
+    user_id_instruction = f"\n\nВАЖНО: Текущий идентификатор пользователя, который задал вопрос: '{current_user_id}'."
     
     # Добавляем системный промпт в начало (если его ещё нет)
     if not messages or not isinstance(messages[0], SystemMessage):
         from datetime import datetime
         current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        system_message = SystemMessage(content=SYSTEM_PROMPT.format(current_datetime=current_datetime))
+        system_message = SystemMessage(content=SYSTEM_PROMPT.format(current_datetime=current_datetime) + user_id_instruction)
         messages = [system_message] + messages
     
     # вызов LLM
     response = await llm_with_tools.ainvoke(messages)
+
+    # logger.warning(f"🧠 [LLM OUTPUT] Tool calls: {response.tool_calls} | Content: {response.content}")
     
     # Возвращаем обновление State
     return {"messages": [response]}
