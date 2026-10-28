@@ -1,12 +1,14 @@
 # app/tools/agent_tools.py
 #--------------------------------------------
 
-from typing import Dict, Any, List, Optional
+from typing import List, Literal, Optional
 from datetime import datetime
 from langchain_core.tools import tool
 
 import uuid
 import logging
+
+from app.rag.service import rag_service
 
 logger = logging.getLogger(__name__)
 
@@ -24,28 +26,43 @@ def get_current_datetime() -> str:
 
 
 @tool
-def search_documents(query: str, user_id: str, limit: int = 5) -> str:
+async def search_documents(query: str, user_id: str, limit: int = 5) -> str:
     """
-    Ищет релевантные документы пользователя по запросу.
+    Ищет информацию в загруженных документах конкретного пользователя.
+    
+    КРИТИЧЕСКИ ВАЖНО: 
+    Параметр user_id должен быть ТОЧНЫМ идентификатором пользователя, который задал вопрос. 
+    ЗАПРЕЩЕНО использовать буквальное слово "user" или "unknown". 
+    Всегда используй реальный ID из контекста запроса (например, тот, что указан в JSON запроса).
     
     Args:
-        query: Поисковый запрос
-        user_id: ID пользователя, чьи документы ищем
-        limit: Максимальное количество результатов
+        query: Поисковый запрос (ключевые слова)
+        user_id: ID пользователя, чьи документы нужно искать (используй значение из системной инструкции)
+        limit: Максимальное количество результатов (по умолчанию 5)
     
     Returns:
-        Список найденных фрагментов документов с метаданными
-    
-    Используй, когда нужно найти информацию в загруженных документах пользователя.
+        Отформатированная строка с найденными фрагментами и именами файлов.
     """
-    # TODO: Интеграция с Qdrant для векторного поиска
-    # Сейчас возвращаем заглушку
     
-    return (
-        f"🔍 Поиск документов для пользователя '{user_id}' по запросу: '{query}'\n\n"
-        "🚧 Это заглушка — реальный RAG-поиск через Qdrant будет добавлен позже.\n\n"
-        "В будущем здесь будут результаты векторного поиска с релевантными фрагментами документов."
-    )
+    try:
+        results = await rag_service.search(query=query, user_id=user_id, limit=limit)
+        
+        if not results:
+            return "📄 В ваших документах не найдено информации, соответствующей запросу."
+        
+        formatted_results = []
+        for i, res in enumerate(results, 1):
+            formatted_results.append(
+                f"[Фрагмент {i}] Файл: {res['filename']}\n"
+                f"Содержимое: {res['content']}\n"
+                f"(Релевантность: {res['score']:.2f})"
+            )
+            
+        return "📄 Найденная информация в документах:\n\n" + "\n---\n".join(formatted_results)
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка RAG поиска: {e}")
+        return f"⚠️ Произошла ошибка при поиске в документах: {str(e)}"
 
 
 # === Инструменты действий (требуют подтверждения) ===
@@ -54,7 +71,7 @@ def search_documents(query: str, user_id: str, limit: int = 5) -> str:
 def create_jira_task(
     title: str,
     description: str,
-    priority: str = "medium",
+    priority: Literal["low", "medium", "high", "critical"] = "medium",
     assignee: Optional[str] = None,
 ) -> str:
     """
@@ -63,7 +80,7 @@ def create_jira_task(
     Args:
         title: Заголовок задачи (обязательно)
         description: Описание задачи (обязательно)
-        priority: Приоритет (low, medium, high, critical). По умолчанию medium.
+        priority: Приоритет задачи. Строго одно из: "low", "medium", "high", "critical". По умолчанию "medium".
         assignee: Исполнитель (опционально)
     
     Returns:

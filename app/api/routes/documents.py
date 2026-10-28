@@ -1,44 +1,66 @@
 # app/api/routes/documents.py
 #--------------------------------------------
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 
-from app.api.deps import get_document_repo
+from app.api.deps import get_document_service, get_document_repo
 from app.api.schemas import DocumentResponse, DocumentListResponse
 from app.db.repositories import DocumentRepository
+from app.services.document_service import DocumentService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
 @router.post(
     "/upload",
-    response_model=DocumentResponse,
+    # response_model=DocumentResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Загрузить документ",
-    description="Загружает файл и создаёт запись в базе данных.",
+    summary="Загрузить и обработать документ",
+    description="Загружает файл, извлекает текст, чанкает и сохраняет векторы в Qdrant.",
 )
 async def upload_document(
     user_id: str,
-    file: UploadFile = File(...),
-    repo: DocumentRepository = Depends(get_document_repo),
+    file: UploadFile = File(..., description="Файл для загрузки (PDF, TXT и т.д.)"),
+    service: DocumentService = Depends(get_document_service),
 ):
-    """Загружает документ и сохраняет метаданные в БД"""
+    """
+    Тонкий роутер: только HTTP-валидация и делегирование бизнес-логики в сервис.
+    """
 
+    # Читаем содержимое файла
     content = await file.read()
     file_size = len(content)
+    
+    if file_size == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Файл пуст")
     
     filename = file.filename or "unknown"
     file_type = filename.split(".")[-1].lower() if "." in filename else "unknown"
     
-    document = await repo.create_document(
-        filename=filename,
-        file_type=file_type,
-        file_size=file_size,
-        user_id=user_id,
-        metadata_json={"original_filename": filename},
-    )
+    # Обработка документа
+    try:
+        document = await service.upload_and_process_document(
+            content=content,
+            filename=filename,
+            file_type=file_type,
+            file_size=file_size,
+            user_id=user_id,
+        )
+        return document
+        
+    except ValueError as e:
+        logger.error(f"❌ Ошибка валидации документа '{filename}': {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     
-    return document
+    except Exception as e:
+        logger.error(f"❌ Критическая ошибка обработки документа '{filename}': {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Ошибка при векторизации и сохранении документа"
+        )
 
 
 @router.get(

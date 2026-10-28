@@ -9,6 +9,7 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from app.api.routes import documents, conversations, chat, actions
 from app.core.config import get_settings
+from app.rag import rag_client
 from app.graph.builder import build_graph
 import app.graph.builder as builder_module
 
@@ -26,6 +27,10 @@ async def lifespan(app: FastAPI):
         
         await checkpointer.setup()
         print("✅ Checkpointer таблицы созданы/проверены.")
+
+        # Инициализация RAG
+        await rag_client.initialize()
+        print("✅ RAG (Qdrant + Embeddings) успешно инициализирован.")
         
         # Собираем граф с активным чекпоинтером
         builder_module.graph = build_graph(checkpointer)

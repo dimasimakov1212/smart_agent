@@ -12,6 +12,7 @@ from app.db.repositories import (
     PendingActionRepository,
 )
 from app.services.chat_service import ChatService
+from app.services.document_service import DocumentService
 import app.graph.builder as builder_module
 
 
@@ -73,3 +74,14 @@ async def get_chat_service(
         raise RuntimeError("LangGraph не инициализирован. Проверьте logs startup.")
         
     return ChatService(session=session, agent_graph=builder_module.graph)
+
+
+async def get_document_service(
+    session: AsyncSession = Depends(get_db),
+) -> DocumentService:
+    """
+    Зависимость для получения DocumentService.
+    Сам создаёт репозиторий и передаёт его в сервис.
+    """
+    repo = DocumentRepository(session)
+    return DocumentService(doc_repo=repo)
