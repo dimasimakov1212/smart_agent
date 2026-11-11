@@ -1,0 +1,23 @@
+name: Мой первый CI 🚀
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Скачиваем код из репозитория
+        uses: actions/checkout@v4
+
+      - name: Приветствие
+        run: echo "Привет! Мой первый CI/CD пайплайн работает! 🎉"
+
+      - name: Проверка Python
+        run: |
+          python --version
+          echo "Python установлен на сервере GitHub!"
+
+      - name: Список файлов проекта
+        run: ls -la
