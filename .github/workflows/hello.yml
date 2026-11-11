@@ -1,23 +1,19 @@
-name: Мой первый CI 🚀
+name: Python CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
 
 jobs:
   hello:
     runs-on: ubuntu-latest
     steps:
-      - name: Скачиваем код из репозитория
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Приветствие
-        run: echo "Привет! Мой первый CI/CD пайплайн работает! 🎉"
-
-      - name: Проверка Python
-        run: |
-          python --version
-          echo "Python установлен на сервере GitHub!"
-
-      - name: Список файлов проекта
-        run: ls -la
+        run: echo "CI работает в ветке ${{ github.ref_name }}!"
