@@ -1,14 +1,19 @@
 # alembic/env.py
-#--------------------------------------------
 
 from logging.config import fileConfig
+
 from sqlalchemy import engine_from_config, pool
+
 from alembic import context
-
-from app.db.database import Base
-from app.db.models import Document, DocumentChunk, ConversationThread, Message, PendingAction
 from app.core.config import get_settings
-
+from app.db.database import Base
+from app.db.models import (  # noqa: F401
+    ConversationThread,
+    Document,
+    DocumentChunk,
+    Message,
+    PendingAction,
+)
 
 config = context.config
 

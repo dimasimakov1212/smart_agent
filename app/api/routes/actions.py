@@ -1,10 +1,9 @@
 # app/api/routes/actions.py
-#--------------------------------------------
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_chat_service, get_pending_action_repo
-from app.api.schemas import PendingActionResponse, ApprovalRequest
+from app.api.schemas import ApprovalRequest, PendingActionResponse
 from app.core.exceptions import ActionAlreadyResolvedError, ActionNotFoundError
 from app.db.repositories import PendingActionRepository
 from app.services.chat_service import ChatService
@@ -25,13 +24,13 @@ async def get_pending_action(
     """Получает pending action по ID."""
 
     action = await repo.get_pending_action(action_id)
-    
+
     if not action:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Action with id {action_id} not found",
         )
-    
+
     return action
 
 
@@ -48,7 +47,7 @@ async def approve_action(
 ):
     """Одобряет действие и ВОЗОБНОВЛЯЕТ выполнение LangGraph."""
     try:
-        result = await service.resume_action(
+        await service.resume_action(
             action_id=action_id,
             user_id=request.user_id,
             approved=True,
@@ -78,7 +77,7 @@ async def reject_action(
 ):
     """Отклоняет действие и ВОЗОБНОВЛЯЕТ выполнение LangGraph с фидбеком."""
     try:
-        result = await service.resume_action(
+        await service.resume_action(
             action_id=action_id,
             user_id=request.user_id,
             approved=False,

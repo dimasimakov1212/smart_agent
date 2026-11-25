@@ -58,10 +58,19 @@ packages = ["app"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 
+[tool.ruff.lint.per-file-ignores]
+"alembic/env.py" = ["F401"]
+"app/core/config.py" = ["N802"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "-m 'not integration' --strict-markers"
+markers = [
+    "integration: требует PostgreSQL / Qdrant / внешних API",
+]

@@ -1,8 +1,6 @@
 # app/services/chat_service.py
-#--------------------------------------------
 
 from dataclasses import dataclass
-from typing import List, Optional
 from uuid import uuid4
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -10,7 +8,12 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ThreadAccessDeniedError, ThreadNotFoundError, ActionNotFoundError, ActionAlreadyResolvedError
+from app.core.exceptions import (
+    ActionAlreadyResolvedError,
+    ActionNotFoundError,
+    ThreadAccessDeniedError,
+    ThreadNotFoundError,
+)
 from app.db.models import Message, PendingAction
 from app.db.repositories import ConversationRepository, PendingActionRepository
 
@@ -19,21 +22,22 @@ from app.db.repositories import ConversationRepository, PendingActionRepository
 class ChatResult:
     """
     Результат обработки сообщения
-    
+
     assistant_message может быть None, если граф остановился
     в ожидании подтверждения пользователя.
     """
+
     thread_id: str
-    user_message: Optional[Message]
-    assistant_message: Optional[Message]
+    user_message: Message | None
+    assistant_message: Message | None
     status: str
-    pending_action: Optional[PendingAction] = None
+    pending_action: PendingAction | None = None
 
 
 class ChatService:
     """
     Оркестрация диалога: БД <-> LangGraph.
-    
+
     Ответственность:
     - управление тредами и правами доступа
     - подготовка состояния для графа
@@ -54,11 +58,11 @@ class ChatService:
         *,
         user_id: str,
         text: str,
-        thread_id: Optional[str] = None,
+        thread_id: str | None = None,
     ) -> ChatResult:
         """
         Обрабатывает новое сообщение пользователя.
-        
+
         1. Находит или создаёт тред
         2. Готовит входное состояние графа
         3. Запускает граф
@@ -71,11 +75,7 @@ class ChatService:
         )
 
         config = {"configurable": {"thread_id": thread_id}}
-        input_state = await self._build_input_state(
-            thread_id=thread_id, 
-            text=text,
-            user_id=user_id
-        )
+        input_state = await self._build_input_state(thread_id=thread_id, text=text, user_id=user_id)
 
         result = await self.graph.ainvoke(input_state, config)
 
@@ -133,7 +133,7 @@ class ChatService:
         action_id: int,
         user_id: str,
         approved: bool,
-        feedback: Optional[str] = None,
+        feedback: str | None = None,
     ) -> ChatResult:
         """
         Возобновляет выполнение графа после решения пользователя.
@@ -149,26 +149,21 @@ class ChatService:
         # 2. Обновляем статус в БД
         if approved:
             await self.actions.approve_action(
-                action_id=action_id,
-                approved_by=user_id,
-                result={"feedback": feedback}
+                action_id=action_id, approved_by=user_id, result={"feedback": feedback}
             )
         else:
-            await self.actions.reject_action(
-                action_id=action_id,
-                rejected_by=user_id
-            )
+            await self.actions.reject_action(action_id=action_id, rejected_by=user_id)
 
         # 3. Возобновляем граф
         config = {"configurable": {"thread_id": action.thread_id}}
         resume_payload = {"approved": approved, "feedback": feedback}
-        
+
         # Command говорит графу: "Продолжи с этого места, используя эти данные"
         result = await self.graph.ainvoke(Command(resume=resume_payload), config)
 
         # 4. Извлекаем финальный ответ агента и сохраняем в БД
         answer = self._extract_final_answer(result["messages"])
-        
+
         assistant_message = await self.conversations.add_message(
             thread_id=action.thread_id,
             role="assistant",
@@ -178,7 +173,7 @@ class ChatService:
         # Возвращаем результат (user_message здесь None, т.к. это продолжение старого запроса)
         return ChatResult(
             thread_id=action.thread_id,
-            user_message=None, 
+            user_message=None,
             assistant_message=assistant_message,
             status="completed",
         )
@@ -190,7 +185,7 @@ class ChatService:
         *,
         user_id: str,
         text: str,
-        thread_id: Optional[str],
+        thread_id: str | None,
     ) -> str:
         """Находит существующий тред или создаёт новый. Проверяет права."""
 
@@ -225,12 +220,12 @@ class ChatService:
     ) -> dict:
         """
         Готовит входное состояние для графа.
-        
+
         ВАЖНО: Checkpointer уже хранит историю сообщений треда.
         Повторная передача всей истории из БД приведёт к её дублированию,
         потому что add_messages merge-ит сообщения по ID, а у новых
         HumanMessage ID генерируется заново при каждом вызове.
-        
+
         Поэтому:
         - если checkpoint существует -> передаём только новое сообщение
         - если checkpoint пуст -> восстанавливаем историю из БД один раз
@@ -242,7 +237,7 @@ class ChatService:
         checkpoint_state = await self.graph.aget_state(config)
         has_history = bool(checkpoint_state.values.get("messages"))
 
-        messages: List[BaseMessage] = []
+        messages: list[BaseMessage] = []
 
         if not has_history:
             existing = await self.conversations.get_thread_messages(
@@ -265,15 +260,11 @@ class ChatService:
         }
 
     @staticmethod
-    def _extract_final_answer(messages: List[BaseMessage]) -> str:
+    def _extract_final_answer(messages: list[BaseMessage]) -> str:
         """Достаёт финальный текстовый ответ агента."""
-        
+
         for message in reversed(messages):
             if isinstance(message, AIMessage) and message.content:
-                return (
-                    message.content
-                    if isinstance(message.content, str)
-                    else str(message.content)
-                )
+                return message.content if isinstance(message.content, str) else str(message.content)
 
         return "Не удалось сформировать ответ."

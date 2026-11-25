@@ -1,12 +1,11 @@
 # app/tools/agent_tools.py
-#--------------------------------------------
 
-from typing import List, Literal, Optional
-from datetime import datetime
-from langchain_core.tools import tool
-
-import uuid
 import logging
+import uuid
+from datetime import datetime
+from typing import Literal
+
+from langchain_core.tools import tool
 
 from app.rag.service import rag_service
 
@@ -14,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 # === Информационные инструменты ===
+
 
 @tool
 def get_current_datetime() -> str:
@@ -29,27 +29,28 @@ def get_current_datetime() -> str:
 async def search_documents(query: str, user_id: str, limit: int = 5) -> str:
     """
     Ищет информацию в загруженных документах конкретного пользователя.
-    
-    КРИТИЧЕСКИ ВАЖНО: 
-    Параметр user_id должен быть ТОЧНЫМ идентификатором пользователя, который задал вопрос. 
-    ЗАПРЕЩЕНО использовать буквальное слово "user" или "unknown". 
+
+    КРИТИЧЕСКИ ВАЖНО:
+    Параметр user_id должен быть ТОЧНЫМ идентификатором пользователя, который задал вопрос.
+    ЗАПРЕЩЕНО использовать буквальное слово "user" или "unknown".
     Всегда используй реальный ID из контекста запроса (например, тот, что указан в JSON запроса).
-    
+
     Args:
         query: Поисковый запрос (ключевые слова)
-        user_id: ID пользователя, чьи документы нужно искать (используй значение из системной инструкции)
+        user_id: ID пользователя, чьи документы нужно искать
+        (используй значение из системной инструкции)
         limit: Максимальное количество результатов (по умолчанию 5)
-    
+
     Returns:
         Отформатированная строка с найденными фрагментами и именами файлов.
     """
-    
+
     try:
         results = await rag_service.search(query=query, user_id=user_id, limit=limit)
-        
+
         if not results:
             return "📄 В ваших документах не найдено информации, соответствующей запросу."
-        
+
         formatted_results = []
         for i, res in enumerate(results, 1):
             formatted_results.append(
@@ -57,9 +58,9 @@ async def search_documents(query: str, user_id: str, limit: int = 5) -> str:
                 f"Содержимое: {res['content']}\n"
                 f"(Релевантность: {res['score']:.2f})"
             )
-            
+
         return "📄 Найденная информация в документах:\n\n" + "\n---\n".join(formatted_results)
-        
+
     except Exception as e:
         logger.error(f"❌ Ошибка RAG поиска: {e}")
         return f"⚠️ Произошла ошибка при поиске в документах: {str(e)}"
@@ -67,40 +68,41 @@ async def search_documents(query: str, user_id: str, limit: int = 5) -> str:
 
 # === Инструменты действий (требуют подтверждения) ===
 
+
 @tool
 def create_jira_task(
     title: str,
     description: str,
     priority: Literal["low", "medium", "high", "critical"] = "medium",
-    assignee: Optional[str] = None,
+    assignee: str | None = None,
 ) -> str:
     """
     Создаёт задачу в Jira.
-    
+
     Args:
         title: Заголовок задачи (обязательно)
         description: Описание задачи (обязательно)
-        priority: Приоритет задачи. Строго одно из: "low", "medium", "high", "critical". По умолчанию "medium".
+        priority: Приоритет задачи. Строго одно из: "low", "medium", "high", "critical".
+        По умолчанию "medium".
         assignee: Исполнитель (опционально)
-    
+
     Returns:
         Информация о созданной задаче.
-    
-    Используй этот инструмент, когда пользователь явно просит создать задачу в Jira 
+
+    Используй этот инструмент, когда пользователь явно просит создать задачу в Jira
     и предоставил заголовок и описание.
     """
 
     # 🚀 ГЕНЕРИРУЕМ УНИКАЛЬНЫЙ ID ПРЯМО ЗДЕСЬ
     # LLM НЕ МОЖЕТ это угадать. Если этот ID появится в ответе, код точно выполнялся.
     real_task_id = f"JIRA-{uuid.uuid4().hex[:8].upper()}"
-    
+
     # 🚀 ПИШЕМ В КОНСОЛЬ СЕРВЕРА
     logger.warning(f"🛠️ [TOOL EXECUTED] create_jira_task | ID: {real_task_id} | Title: {title}")
-    
 
     # TODO: Интеграция с Jira API
     # Сейчас возвращаем заглушку
-    
+
     task_info = {
         "task_id": real_task_id,
         "title": title,
@@ -109,7 +111,7 @@ def create_jira_task(
         "assignee": assignee or "Unassigned",
         "status": "created",
     }
-    
+
     return (
         f"✅ Задача в Jira создана (заглушка):\n"
         f"- ID: {task_info['task_id']}\n"
@@ -125,27 +127,27 @@ def send_email(
     to: str,
     subject: str,
     body: str,
-    cc: Optional[List[str]] = None,
+    cc: list[str] | None = None,
 ) -> str:
     """
     Отправляет email.
-    
+
     Args:
         to: Email получателя
         subject: Тема письма
         body: Тело письма
         cc: Список email для копии (опционально)
-    
+
     Returns:
         Информация об отправленном письме
-    
-    Используй этот инструмент, когда пользователь явно просит отправить email 
+
+    Используй этот инструмент, когда пользователь явно просит отправить email
     и предоставил email получателя, тему письма и тело письма
     """
 
     # TODO: Интеграция с SMTP или email API
     # Сейчас возвращаем заглушку
-    
+
     return (
         f"✅ Email отправлен (заглушка):\n"
         f"- Кому: {to}\n"
@@ -160,18 +162,18 @@ def send_email(
 def search_web(query: str) -> str:
     """
     Ищет информацию в интернете.
-    
+
     Args:
         query: Поисковый запрос
-    
+
     Returns:
         Результаты веб-поиска
-    
+
     Используй, когда нужно найти актуальную информацию, которой нет в документах пользователя.
     """
     # TODO: Интеграция с поисковым API (Google, Bing, и т.д.)
     # Сейчас возвращаем заглушку
-    
+
     return (
         f"🌐 Веб-поиск по запросу: '{query}'\n\n"
         "🚧 Это заглушка — реальный веб-поиск будет добавлен позже.\n\n"
@@ -199,15 +201,15 @@ HUMAN_APPROVAL_REQUIRED_TOOLS = [
 
 def get_tool_by_name(name: str):
     """Получает инструмент по имени."""
-    for tool in ALL_TOOLS:
-        if tool.name == name:
-            return tool
+    for tool_item in ALL_TOOLS:
+        if tool_item.name == name:
+            return tool_item
     return None
 
 
 def is_human_approval_required(tool_name: str) -> bool:
     """Проверяет, требует ли инструмент подтверждения пользователя."""
-    for tool in HUMAN_APPROVAL_REQUIRED_TOOLS:
-        if tool.name == tool_name:
+    for tool_item in HUMAN_APPROVAL_REQUIRED_TOOLS:
+        if tool_item.name == tool_name:
             return True
     return False

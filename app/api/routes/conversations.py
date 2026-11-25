@@ -1,8 +1,6 @@
 # app/api/routes/conversations.py
-#--------------------------------------------
 
 import uuid
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -24,7 +22,7 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
     status_code=status.HTTP_201_CREATED,
     summary="Создать новый тред диалога",
     description="Создаёт новый тред для диалога пользователя с агентом. "
-                "В будущем thread_id будет использоваться LangGraph для хранения состояния.",
+    "В будущем thread_id будет использоваться LangGraph для хранения состояния.",
 )
 async def create_conversation(
     request: CreateThreadRequest,
@@ -37,13 +35,13 @@ async def create_conversation(
     # Thread ID генерируется на стороне сервера (UUID4), чтобы гарантировать
     # уникальность и совместимость с LangGraph Checkpointer
     thread_id = str(uuid.uuid4())
-    
+
     thread = await repo.create_thread(
         thread_id=thread_id,
         user_id=request.user_id,
         title=request.title,
     )
-    
+
     return thread
 
 
@@ -51,7 +49,7 @@ async def create_conversation(
     "/user/{user_id}",
     response_model=ConversationThreadListResponse,
     summary="Получить треды пользователя",
-    description="Возвращает список тредов диалогов пользователя, отсортированных по дате обновления.",
+    description="Список тредов диалогов, отсортированных по дате обновления.",
 )
 async def get_user_conversations(
     user_id: str,
@@ -61,7 +59,7 @@ async def get_user_conversations(
 ):
     """
     Получает список тредов пользователя с пагинацией.
-    
+
     Треды отсортированы по `updated_at` DESC — самые свежие сверху.
     """
 
@@ -70,7 +68,7 @@ async def get_user_conversations(
         limit=limit,
         offset=offset,
     )
-    
+
     return ConversationThreadListResponse(
         threads=threads,
         total=total,
@@ -79,7 +77,7 @@ async def get_user_conversations(
 
 @router.get(
     "/{thread_id}/messages",
-    response_model=List[MessageResponse],
+    response_model=list[MessageResponse],
     summary="Получить историю сообщений треда",
     description="Возвращает все сообщения в треде, отсортированные по времени создания.",
 )
@@ -90,7 +88,7 @@ async def get_thread_messages(
 ):
     """
     Получает историю сообщений конкретного треда.
-    
+
     Сообщения отсортированы по `created_at` ASC — от старых к новым,
     как в обычном чате.
     """
@@ -102,7 +100,7 @@ async def get_thread_messages(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Thread '{thread_id}' not found",
         )
-    
+
     messages = await repo.get_thread_messages(thread_id=thread_id, limit=limit)
 
     return messages
@@ -120,11 +118,11 @@ async def get_conversation(
 ):
     """Получает тред по ID."""
     thread = await repo.get_thread(thread_id)
-    
+
     if not thread:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Thread '{thread_id}' not found",
         )
-    
+
     return thread

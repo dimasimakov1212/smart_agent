@@ -1,18 +1,16 @@
 # app/main.py
-#--------------------------------------------
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-from app.api.routes import documents, conversations, chat, actions
-from app.core.config import get_settings
-from app.rag import rag_client
-from app.graph.builder import build_graph
 import app.graph.builder as builder_module
-
+from app.api.routes import actions, chat, conversations, documents
+from app.core.config import get_settings
+from app.graph.builder import build_graph
+from app.rag import rag_client
 
 settings = get_settings()
 
@@ -21,22 +19,23 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     # === Startup ===
     print("🚀 Инициализация LangGraph Checkpointer в PostgreSQL...")
-    
+
     # возвращает контекстный менеджер, управляющий пулом соединений
-    async with AsyncPostgresSaver.from_conn_string(settings.DATABASE_URL_CHECKPOINT) as checkpointer:
-        
+    async with AsyncPostgresSaver.from_conn_string(
+        settings.DATABASE_URL_CHECKPOINT
+    ) as checkpointer:
         await checkpointer.setup()
         print("✅ Checkpointer таблицы созданы/проверены.")
 
         # Инициализация RAG
         await rag_client.initialize()
         print("✅ RAG (Qdrant + Embeddings) успешно инициализирован.")
-        
+
         # Собираем граф с активным чекпоинтером
         builder_module.graph = build_graph(checkpointer)
         print("✅ LangGraph успешно скомпилирован с AsyncPostgresSaver.")
-        
-        yield  
+
+        yield
 
     print("🛑 Завершение работы Smart Agent API... (Пул соединений закрыт)")
 
@@ -75,12 +74,8 @@ app.include_router(actions.router)
 
 # === Base Endpoints ===
 
-@app.get(
-    "/",
-    tags=["base"],
-    summary="Root endpoint",
-    description="Базовая информация о API"
-)
+
+@app.get("/", tags=["base"], summary="Root endpoint", description="Базовая информация о API")
 async def root():
     """Возвращает базовую информацию о API."""
     return {
@@ -95,7 +90,7 @@ async def root():
     "/health",
     tags=["base"],
     summary="Health check",
-    description="Проверка работоспособности сервиса"
+    description="Проверка работоспособности сервиса",
 )
 async def health_check():
     """
@@ -109,10 +104,7 @@ async def health_check():
 
 
 @app.get(
-    "/info",
-    tags=["base"],
-    summary="Service info",
-    description="Детальная информация о сервисе"
+    "/info", tags=["base"], summary="Service info", description="Детальная информация о сервисе"
 )
 async def service_info():
     """Возвращает детальную информацию о сервисе и его окружении."""

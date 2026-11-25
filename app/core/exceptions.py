@@ -1,5 +1,5 @@
 # app/app/core/exceptions.py
-#--------------------------------------------
+
 
 class DomainError(Exception):
     """Базовое исключение бизнес-логики."""
