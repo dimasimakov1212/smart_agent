@@ -47,7 +47,7 @@ async def approve_action(
 ):
     """Одобряет действие и ВОЗОБНОВЛЯЕТ выполнение LangGraph."""
     try:
-        result = await service.resume_action(
+        await service.resume_action(
             action_id=action_id,
             user_id=request.user_id,
             approved=True,
@@ -77,7 +77,7 @@ async def reject_action(
 ):
     """Отклоняет действие и ВОЗОБНОВЛЯЕТ выполнение LangGraph с фидбеком."""
     try:
-        result = await service.resume_action(
+        await service.resume_action(
             action_id=action_id,
             user_id=request.user_id,
             approved=False,
