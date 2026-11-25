@@ -81,7 +81,11 @@ class DocumentChunk(Base, TimestampMixin):
     document: Mapped["Document"] = relationship(back_populates="chunks")
 
     def __repr__(self) -> str:
-        return f"<DocumentChunk(id={self.id}, document_id={self.document_id}, index={self.chunk_index})>"
+        return (
+            f"<DocumentChunk(id='{self.id}', "
+            f"document_id='{self.document_id}', "
+            f"index='{self.chunk_index}')>"
+        )
 
 
 class ConversationThread(Base, TimestampMixin):
@@ -116,7 +120,11 @@ class ConversationThread(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return f"<ConversationThread(id='{self.id}', user_id='{self.user_id}', status='{self.status}')>"
+        return (
+            f"<ConversationThread(id='{self.id}', "
+            f"user_id='{self.user_id}', "
+            f"status='{self.status}')>"
+        )
 
 
 class Message(Base, TimestampMixin):
