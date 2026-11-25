@@ -1,17 +1,15 @@
 # app/db/repositories.py
-#--------------------------------------------
 
-from typing import Optional, List
-from datetime import datetime
+
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import func
 
 from app.db.models import (
+    ConversationThread,
     Document,
     DocumentChunk,
-    ConversationThread,
     Message,
     PendingAction,
 )
@@ -29,7 +27,7 @@ class DocumentRepository:
         file_type: str,
         file_size: int,
         user_id: str,
-        metadata_json: Optional[dict] = None,
+        metadata_json: dict | None = None,
     ) -> Document:
         """Создаёт запись о загруженном документе"""
 
@@ -51,7 +49,7 @@ class DocumentRepository:
         text_content: str,
         qdrant_point_id: str,
         token_count: int,
-        metadata_json: Optional[dict] = None,
+        metadata_json: dict | None = None,
     ) -> DocumentChunk:
         """Добавляет чанк документа"""
 
@@ -71,12 +69,10 @@ class DocumentRepository:
         """Обновляет суммарное количество токенов в документе"""
 
         await self.session.execute(
-            update(Document)
-            .where(Document.id == document_id)
-            .values(total_tokens=total_tokens)
+            update(Document).where(Document.id == document_id).values(total_tokens=total_tokens)
         )
 
-    async def get_document_by_id(self, document_id: int) -> Optional[Document]:
+    async def get_document_by_id(self, document_id: int) -> Document | None:
         """Получает документ по ID с загруженными чанками"""
 
         result = await self.session.execute(
@@ -88,12 +84,12 @@ class DocumentRepository:
 
     async def get_user_documents(
         self, user_id: str, limit: int = 50, offset: int = 0
-    ) -> tuple[List[Document], int]:
+    ) -> tuple[list[Document], int]:
         """
         Получает список документов пользователя с пагинацией.
         Возвращает кортеж: (список документов, общее количество).
         """
-        
+
         # 1. Список документов
         result = await self.session.execute(
             select(Document)
@@ -103,13 +99,13 @@ class DocumentRepository:
             .offset(offset)
         )
         documents = list(result.scalars().all())
-        
+
         # 2. Общее количество
         count_result = await self.session.execute(
             select(func.count(Document.id)).where(Document.user_id == user_id)
         )
         total = count_result.scalar_one()
-        
+
         return documents, total
 
 
@@ -123,7 +119,7 @@ class ConversationRepository:
         self,
         thread_id: str,
         user_id: str,
-        title: Optional[str] = None,
+        title: str | None = None,
     ) -> ConversationThread:
         """Создаёт новый тред диалога"""
 
@@ -137,7 +133,7 @@ class ConversationRepository:
         await self.session.flush()
         return thread
 
-    async def get_thread(self, thread_id: str) -> Optional[ConversationThread]:
+    async def get_thread(self, thread_id: str) -> ConversationThread | None:
         """Получает тред по ID с загруженными сообщениями"""
 
         result = await self.session.execute(
@@ -152,9 +148,9 @@ class ConversationRepository:
         thread_id: str,
         role: str,
         content: str,
-        tool_calls: Optional[list] = None,
-        tool_call_id: Optional[str] = None,
-        metadata_json: Optional[dict] = None,
+        tool_calls: list | None = None,
+        tool_call_id: str | None = None,
+        metadata_json: dict | None = None,
     ) -> Message:
         """
         Добавляет сообщение в тред и обновляет updated_at у треда.
@@ -169,19 +165,17 @@ class ConversationRepository:
         )
         self.session.add(message)
         await self.session.flush()
-        
+
         # Обновляем updated_at у треда
         await self.session.execute(
             update(ConversationThread)
             .where(ConversationThread.id == thread_id)
             .values(updated_at=func.now())
         )
-        
+
         return message
 
-    async def get_thread_messages(
-        self, thread_id: str, limit: int = 100
-    ) -> List[Message]:
+    async def get_thread_messages(self, thread_id: str, limit: int = 100) -> list[Message]:
         """Получает историю сообщений треда"""
 
         result = await self.session.execute(
@@ -194,7 +188,7 @@ class ConversationRepository:
 
     async def get_user_threads_paginated(
         self, user_id: str, limit: int = 20, offset: int = 0
-    ) -> tuple[List[ConversationThread], int]:
+    ) -> tuple[list[ConversationThread], int]:
         """
         Получает список тредов пользователя с пагинацией.
         Возвращает кортеж: (список тредов, общее количество).
@@ -208,14 +202,13 @@ class ConversationRepository:
             .offset(offset)
         )
         threads = list(result.scalars().all())
-        
+
         # 2. Общее количество
         count_result = await self.session.execute(
-            select(func.count(ConversationThread.id))
-            .where(ConversationThread.user_id == user_id)
+            select(func.count(ConversationThread.id)).where(ConversationThread.user_id == user_id)
         )
         total = count_result.scalar_one()
-        
+
         return threads, total
 
     async def update_thread_status(self, thread_id: str, status: str) -> None:
@@ -252,7 +245,7 @@ class PendingActionRepository:
         await self.session.flush()
         return action
 
-    async def get_pending_action(self, action_id: int) -> Optional[PendingAction]:
+    async def get_pending_action(self, action_id: int) -> PendingAction | None:
         """Получает pending action по ID"""
 
         result = await self.session.execute(
@@ -260,7 +253,7 @@ class PendingActionRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_pending_for_thread(self, thread_id: str) -> Optional[PendingAction]:
+    async def get_pending_for_thread(self, thread_id: str) -> PendingAction | None:
         """Получает последнее pending action для треда"""
 
         result = await self.session.execute(
@@ -274,7 +267,7 @@ class PendingActionRepository:
         self,
         action_id: int,
         approved_by: str,
-        result: Optional[dict] = None,
+        result: dict | None = None,
     ) -> None:
         """Одобрение действия пользователем"""
 
