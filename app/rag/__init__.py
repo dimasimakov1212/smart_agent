@@ -1,7 +1,7 @@
 # app/rag/__init__.py
 
-from app.rag.client import rag_client, COLLECTION_NAME, EMBEDDING_MODEL
-from app.rag.service import rag_service, RAGService
+from app.rag.client import COLLECTION_NAME, EMBEDDING_MODEL, rag_client
+from app.rag.service import RAGService, rag_service
 
 __all__ = [
     "rag_client",

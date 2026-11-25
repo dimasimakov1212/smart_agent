@@ -2,14 +2,14 @@
 
 import logging
 from io import BytesIO
-from typing import List, Dict, Any
+from typing import Any
 
-from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from pypdf import PdfReader
 
-from app.rag.service import rag_service
-from app.db.repositories import DocumentRepository
 from app.db.models import Document
+from app.db.repositories import DocumentRepository
+from app.rag.service import rag_service
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class DocumentService:
         """
         Полный цикл обработки документа: БД -> Текст -> Чанки -> Qdrant -> Обновление БД.
         """
-        
+
         # 1. Создаем базовую запись в БД
         document = await self.doc_repo.create_document(
             filename=filename,
@@ -43,7 +43,7 @@ class DocumentService:
             user_id=user_id,
             metadata_json={"original_filename": filename},
         )
-        
+
         # 2. Извлекаем текст
         text = self._extract_text(content, file_type)
         if not text.strip():
@@ -51,27 +51,31 @@ class DocumentService:
 
         # 3. Чанкинг
         langchain_docs = self.text_splitter.create_documents([text])
-        
+
         texts = []
-        metadatas: List[Dict[str, Any]] = []
-        
+        metadatas: list[dict[str, Any]] = []
+
         for i, doc in enumerate(langchain_docs):
             texts.append(doc.page_content)
-            metadatas.append({
-                "document_id": document.id,
-                "user_id": user_id,
-                "filename": filename,
-                "chunk_index": i,
-                "text_content": doc.page_content
-            })
+            metadatas.append(
+                {
+                    "document_id": document.id,
+                    "user_id": user_id,
+                    "filename": filename,
+                    "chunk_index": i,
+                    "text_content": doc.page_content,
+                }
+            )
 
         # 4. Сохранение в Qdrant
         chunks_count = await rag_service.add_documents(texts, metadatas)
-        
+
         # 5. Обновляем счетчик чанков в БД (метод уже есть в твоем репозитории!)
         await self.doc_repo.update_document_tokens(document.id, chunks_count)
 
-        logger.warning(f"✅ [SERVICE] Документ '{filename}' полностью обработан, создано {chunks_count} чанков.")
+        logger.warning(
+            f"✅ [SERVICE] Документ '{filename}' полностью обработан, создано {chunks_count} чанков."
+        )
 
         return document
 
