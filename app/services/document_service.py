@@ -74,7 +74,7 @@ class DocumentService:
         await self.doc_repo.update_document_tokens(document.id, chunks_count)
 
         logger.warning(
-            f"✅ [SERVICE] Документ '{filename}' полностью обработан, создано {chunks_count} чанков."
+            f"✅ [SERVICE] Документ '{filename}' обработан, создано {chunks_count} чанков."
         )
 
         return document

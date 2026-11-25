@@ -37,7 +37,8 @@ async def search_documents(query: str, user_id: str, limit: int = 5) -> str:
 
     Args:
         query: Поисковый запрос (ключевые слова)
-        user_id: ID пользователя, чьи документы нужно искать (используй значение из системной инструкции)
+        user_id: ID пользователя, чьи документы нужно искать
+        (используй значение из системной инструкции)
         limit: Максимальное количество результатов (по умолчанию 5)
 
     Returns:
@@ -81,7 +82,8 @@ def create_jira_task(
     Args:
         title: Заголовок задачи (обязательно)
         description: Описание задачи (обязательно)
-        priority: Приоритет задачи. Строго одно из: "low", "medium", "high", "critical". По умолчанию "medium".
+        priority: Приоритет задачи. Строго одно из: "low", "medium", "high", "critical".
+        По умолчанию "medium".
         assignee: Исполнитель (опционально)
 
     Returns:
@@ -199,15 +201,15 @@ HUMAN_APPROVAL_REQUIRED_TOOLS = [
 
 def get_tool_by_name(name: str):
     """Получает инструмент по имени."""
-    for tool in ALL_TOOLS:
-        if tool.name == name:
-            return tool
+    for tool_item in ALL_TOOLS:
+        if tool_item.name == name:
+            return tool_item
     return None
 
 
 def is_human_approval_required(tool_name: str) -> bool:
     """Проверяет, требует ли инструмент подтверждения пользователя."""
-    for tool in HUMAN_APPROVAL_REQUIRED_TOOLS:
-        if tool.name == tool_name:
+    for tool_item in HUMAN_APPROVAL_REQUIRED_TOOLS:
+        if tool_item.name == tool_name:
             return True
     return False
