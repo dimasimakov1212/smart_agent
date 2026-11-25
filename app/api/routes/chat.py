@@ -1,5 +1,4 @@
 # app/api/routes/chat.py
-#--------------------------------------------
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -17,10 +16,9 @@ router = APIRouter(prefix="/chat", tags=["chat"])
     status_code=status.HTTP_200_OK,
     summary="Отправить сообщение агенту",
     description="Отправляет сообщение LangGraph-агенту. "
-                "Если thread_id не указан — создаётся новый тред. "
-                "Возвращает как сообщение пользователя, так и ответ агента.",
+    "Если thread_id не указан — создаётся новый тред. "
+    "Возвращает как сообщение пользователя, так и ответ агента.",
 )
-
 async def chat(
     request: ChatRequest,
     service: ChatService = Depends(get_chat_service),
@@ -28,7 +26,7 @@ async def chat(
     """
     Основной endpoint для общения с LangGraph-агентом.
     """
-    
+
     try:
         result = await service.process_message(
             user_id=request.user_id,
@@ -45,7 +43,7 @@ async def chat(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(e),
         )
-    
+
     return ChatResponse(
         thread_id=result.thread_id,
         user_message=MessageResponse.model_validate(result.user_message),
