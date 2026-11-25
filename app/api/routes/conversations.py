@@ -49,7 +49,7 @@ async def create_conversation(
     "/user/{user_id}",
     response_model=ConversationThreadListResponse,
     summary="Получить треды пользователя",
-    description="Возвращает список тредов диалогов пользователя, отсортированных по дате обновления.",
+    description="Список тредов диалогов, отсортированных по дате обновления.",
 )
 async def get_user_conversations(
     user_id: str,
