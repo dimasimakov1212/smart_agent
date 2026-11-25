@@ -1,19 +1,19 @@
 # app/api/deps.py
-#--------------------------------------------
 
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.graph.builder as builder_module
 from app.db.database import get_db
 from app.db.repositories import (
-    DocumentRepository,
     ConversationRepository,
+    DocumentRepository,
     PendingActionRepository,
 )
 from app.services.chat_service import ChatService
 from app.services.document_service import DocumentService
-import app.graph.builder as builder_module
 
 
 # === Database Session ===
@@ -65,14 +65,14 @@ async def get_chat_service(
 ) -> ChatService:
     """
     Зависимость для получения ChatService.
-    Обращаемся к builder_module.graph во время выполнения, 
+    Обращаемся к builder_module.graph во время выполнения,
     когда lifespan уже инициализировал граф.
     """
-    
+
     # Проверка если сервер запросили до старта
     if builder_module.graph is None:
         raise RuntimeError("LangGraph не инициализирован. Проверьте logs startup.")
-        
+
     return ChatService(session=session, agent_graph=builder_module.graph)
 
 
